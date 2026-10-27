@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stroke Upper-Limb Digital Assessment</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- MediaPipe Libraries via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    
+    /* Mirror video feed for intuitive user interaction */
+    .mirror {
+      transform: scaleX(-1);
+    }
+    
+    /* Custom Scrollbar for side panel */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Pulse animation for active recording status */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .recording-pulse {
+      animation: pulse-ring 1.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-teal-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('dashboard')">
+        <div class="w-10 h-10 rounded-xl bg-teal-500 flex items-center justify-center text-slate-900 font-extrabold text-xl shadow-lg">
+          <i class="fa-solid fa-heart-pulse text-white"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide">NeuroRehab Metrics</h1>
+          <p class="text-xs text-teal-400 font-medium">Upper-Limb Motor & Proprioception Assessment</p>
+        </div>
+      </div>
+
+      <!-- Navigation & Patient Info -->
+      <div class="flex items-center space-x-4">
+        <div class="hidden sm:flex items-center bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          <label for="patientIdInput" class="text-xs text-slate-400 mr-2 font-medium">Patient ID:</label>
+          <input type="text" id="patientIdInput" value="P-1042" placeholder="e.g. P-1042" 
+            class="bg-slate-900 text-sm text-teal-300 font-mono px-2 py-0.5 rounded border border-slate-700 focus:outline-none focus:border-teal-500 w-28">
+        </div>
+        <button onclick="switchTab('results')" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition border border-slate-700">
+          <i class="fa-solid fa-chart-line text-teal-400"></i>
+          <span>Summary & Export</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+    <!-- VIEW 1: DASHBOARD / TEST SELECTION SCREEN -->
+    <section id="view-dashboard" class="space-y-6">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80">
+        <div class="max-w-3xl">
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Clinical Assessment Protocol</h2>
+          <p class="mt-2 text-slate-600 text-base leading-relaxed">
+            Select an assessment battery below to measure distal dexterity, proximal reach capacity, or elbow position sense. Ensure adequate room lighting and position yourself clearly in front of the camera.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Test 1: Finger Tapping -->
+        <div class="bg-white rounded-2xl border border-slate-200 hover:border-teal-500 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group">
+          <div class="p-6">
+            <div class="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl font-bold mb-4 group-hover:bg-teal-500 group-hover:text-white transition-colors">
+              <i class="fa-solid fa-hand-pointer"></i>
+            </div>
+            <span class="text-xs font-bold uppercase tracking-wider text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">Distal Fine Motor</span>
+            <h3 class="text-xl font-bold text-slate-900 mt-3">Finger Tapping</h3>
+            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+              Measures speed and rhythmicity of thumb-to-index pinch movements over a timed 30-second window.
+            </p>
+            <ul class="mt-4 space-y-2 text-xs text-slate-500">
+              <li class="flex items-center"><i class="fa-solid fa-clock text-teal-500 mr-2"></i>Duration: 30 Seconds</li>
+              <li class="flex items-center"><i class="fa-solid fa-video text-teal-500 mr-2"></i>MediaPipe Hand Tracking</li>
+            </ul>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+            <button onclick="startAssessment('finger-tapping')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+              <span>Start Assessment</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Test 2: Reach-to-Target -->
+        <div class="bg-white rounded-2xl border border-slate-200 hover:border-indigo-500 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group">
+          <div class="p-6">
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-bold mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <i class="fa-solid fa-child-reaching"></i>
+            </div>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">Proximal Range</span>
+            <h3 class="text-xl font-bold text-slate-900 mt-3">Reach-to-Target</h3>
+            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+              Tracks maximum normalized forward reaching extension of the wrist relative to shoulder baseline over 15 seconds.
+            </p>
+            <ul class="mt-4 space-y-2 text-xs text-slate-500">
+              <li class="flex items-center"><i class="fa-solid fa-clock text-indigo-500 mr-2"></i>Duration: 15 Seconds</li>
+              <li class="flex items-center"><i class="fa-solid fa-person text-indigo-500 mr-2"></i>MediaPipe Pose Tracking</li>
+            </ul>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+            <button onclick="startAssessment('reach-target')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+              <span>Start Assessment</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Test 3: Elbow Proprioception -->
+        <div class="bg-white rounded-2xl border border-slate-200 hover:border-amber-500 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden group">
+          <div class="p-6">
+            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold mb-4 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+              <i class="fa-solid fa-angle-right"></i>
+            </div>
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">Sensory / Joint Sense</span>
+            <h3 class="text-xl font-bold text-slate-900 mt-3">Elbow Proprioception</h3>
+            <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+              Evaluates joint position sense matching accuracy against preset target angles (60°, 90°, 120°).
+            </p>
+            <ul class="mt-4 space-y-2 text-xs text-slate-500">
+              <li class="flex items-center"><i class="fa-solid fa-bullseye text-amber-500 mr-2"></i>Auto-hold / Manual Confirm</li>
+              <li class="flex items-center"><i class="fa-solid fa-compass text-amber-500 mr-2"></i>MediaPipe Joint Angle Detection</li>
+            </ul>
+          </div>
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100">
+            <button onclick="startAssessment('elbow-proprioception')" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+              <span>Start Assessment</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VIEW 2: ACTIVE CAMERA & ASSESSMENT WORKSPACE -->
+    <section id="view-assessment" class="hidden flex flex-col lg:flex-row gap-6">
+      
+      <!-- Video / Canvas Feed -->
+      <div class="lg:w-2/3 flex flex-col">
+        <div class="relative bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-800 flex items-center justify-center aspect-[4/3] sm:aspect-[16/9]">
+          
+          <!-- Hidden Video Source -->
+          <video id="webcam" class="hidden" playsinline></video>
+          
+          <!-- Render Canvas -->
+          <canvas id="outputCanvas" class="w-full h-full object-contain mirror"></canvas>
+
+          <!-- Top Status Bar Banner overlay on Camera -->
+          <div class="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+            <div id="testBadge" class="bg-slate-900/80 backdrop-blur-md text-white border border-slate-700 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center space-x-2">
+              <span id="testBadgeDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <span id="testBadgeTitle">Finger Tapping Test</span>
+            </div>
+
+            <div id="timerContainer" class="bg-slate-900/80 backdrop-blur-md text-white border border-slate-700 px-4 py-1.5 rounded-full font-mono font-bold text-base flex items-center space-x-2">
+              <i class="fa-regular fa-clock text-teal-400"></i>
+              <span id="timerDisplay">30.0s</span>
+            </div>
+          </div>
+
+          <!-- Bottom Visual Instruction Banner overlay on Camera -->
+          <div id="guidanceBanner" class="absolute bottom-4 left-4 right-4 bg-slate-900/85 backdrop-blur-md border border-slate-700 text-white p-3 rounded-xl text-center shadow-lg transition-all">
+            <p id="guidanceText" class="text-sm font-medium text-teal-300">Position your upper body or hand in clear view of the camera.</p>
+          </div>
+
+          <!-- Camera Loading / Fallback Screen -->
+          <div id="cameraLoading" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white space-y-4">
+            <div class="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm text-slate-300 font-medium">Initializing camera & neural models...</p>
+          </div>
+        </div>
+
+        <!-- Controls Toolbar beneath video -->
+        <div class="mt-4 bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+          <div class="flex items-center space-x-3">
+            <button id="startTestBtn" onclick="toggleTestExecution()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-2.5 rounded-lg shadow transition flex items-center space-x-2">
+              <i id="startTestIcon" class="fa-solid fa-play"></i>
+              <span id="startTestLabel">Begin Recording</span>
+            </button>
+            <button onclick="stopAndReturn()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-lg transition border border-slate-300">
+              Cancel
+            </button>
+          </div>
+
+          <!-- Side selector options (e.g., target selection for proprioception) -->
+          <div id="proprioceptionOptions" class="hidden flex items-center space-x-3">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Target Angle:</span>
+            <div class="inline-flex rounded-lg border border-slate-200 p-1 bg-slate-50">
+              <button onclick="setProprioceptionTarget(60)" class="prop-angle-btn px-3 py-1 text-xs font-bold rounded-md transition text-slate-600 hover:text-slate-900" data-angle="60">60°</button>
+              <button onclick="setProprioceptionTarget(90)" class="prop-angle-btn px-3 py-1 text-xs font-bold rounded-md transition text-slate-600 hover:text-slate-900 bg-white shadow-sm text-teal-600" data-angle="90">90°</button>
+              <button onclick="setProprioceptionTarget(120)" class="prop-angle-btn px-3 py-1 text-xs font-bold rounded-md transition text-slate-600 hover:text-slate-900" data-angle="120">120°</button>
+            </div>
+            <button id="confirmProprioBtn" onclick="confirmProprioceptionAngle()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs shadow transition">
+              Confirm Position
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time Live Metrics Dashboard Panel -->
+      <div class="lg:w-1/3 flex flex-col space-y-4">
+        
+        <!-- Live Counters Card -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex-grow flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <i class="fa-solid fa-square-poll-vertical text-teal-600"></i>
+                <span>Live Metrics</span>
+              </h3>
+              <span id="activeSideHand" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Side: Dynamic</span>
+            </div>
+
+            <!-- Dynamic Metric Display based on Test -->
+            <div id="metricsContent" class="mt-6 space-y-6">
+              
+              <!-- Tapping Metrics -->
+              <div id="tapMetrics" class="space-y-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Total Taps Completed</span>
+                  <div id="tapCounter" class="text-5xl font-black text-teal-600 mt-1">0</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <span class="text-xs font-medium text-slate-500">Cadence</span>
+                    <p id="tapCadence" class="text-lg font-bold text-slate-800 mt-0.5">0 <span class="text-xs font-normal text-slate-500">taps/min</span></p>
+                  </div>
+                  <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <span class="text-xs font-medium text-slate-500">Thumb-Index Dist</span>
+                    <p id="pinchDist" class="text-lg font-bold text-slate-800 mt-0.5">0.0 <span class="text-xs font-normal text-slate-500">px</span></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Reach Metrics -->
+              <div id="reachMetrics" class="hidden space-y-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Max Extension Reach</span>
+                  <div id="maxReachVal" class="text-5xl font-black text-indigo-600 mt-1">0.0 <span class="text-2xl font-bold">cm</span></div>
+                  <p id="maxReachNorm" class="text-xs text-slate-500 mt-1">Normalized Reach: 0% shoulder width</p>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <span class="text-xs font-medium text-slate-500">Current Live Reach Extension</span>
+                  <div class="w-full bg-slate-200 h-3 rounded-full overflow-hidden mt-2">
+                    <div id="reachProgressBar" class="bg-indigo-600 h-full w-0 transition-all duration-150"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Proprioception Metrics -->
+              <div id="proprioMetrics" class="hidden space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-center">
+                    <span class="text-xs font-medium text-slate-500">Target Angle</span>
+                    <p id="targetAngleDisplay" class="text-2xl font-black text-slate-800 mt-1">90°</p>
+                  </div>
+                  <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-center">
+                    <span class="text-xs font-medium text-slate-500">Measured Elbow</span>
+                    <p id="currentElbowAngleDisplay" class="text-2xl font-black text-amber-600 mt-1">--°</p>
+                  </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                  <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Absolute Error</span>
+                  <div id="angleErrorDisplay" class="text-4xl font-black text-slate-700 mt-1">--°</div>
+                  <p class="text-xs text-slate-500 mt-1">Difference from target posture</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Quick Instructions Footer -->
+          <div class="mt-6 pt-4 border-t border-slate-100 bg-teal-50/50 p-3.5 rounded-xl border border-teal-100">
+            <p class="text-xs font-semibold text-teal-900 flex items-center mb-1">
+              <i class="fa-solid fa-circle-info mr-1.5 text-teal-600"></i> Patient Guidance:
+            </p>
+            <p id="testInstructions" class="text-xs text-slate-600 leading-relaxed">
+              Tap thumb and index fingertips together as quickly and distinctly as possible.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VIEW 3: RESULTS SUMMARY & EXPORT SCREEN -->
+    <section id="view-results" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">Assessment Report</span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-2">Functional Scorecard</h2>
+          <p class="text-sm text-slate-600 mt-1">
+            Summary of session scores and quantitative kinematics for stroke recovery tracking.
+          </p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button onclick="exportToCSV()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-5 py-2.5 rounded-xl shadow transition flex items-center space-x-2">
+            <i class="fa-solid fa-file-csv text-base"></i>
+            <span>Export Results as CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Score Breakdown Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Finger Tapping Result -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+              <i class="fa-solid fa-hand-pointer text-teal-600"></i>
+              <span>Finger Tapping</span>
+            </h3>
+            <span id="resTapStatus" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded">Not Tested</span>
+          </div>
+          <div class="py-6 text-center">
+            <div id="resTapScore" class="text-4xl font-extrabold text-slate-300">--</div>
+            <p class="text-xs text-slate-500 mt-1">Total Taps in 30 Seconds</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-1.5">
+            <div class="flex justify-between text-slate-600">
+              <span>Calculated Rate:</span>
+              <span id="resTapRate" class="font-semibold text-slate-800">-- taps/min</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Motor Rhythmicity:</span>
+              <span id="resTapRhythm" class="font-semibold text-slate-800">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reach-to-Target Result -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+              <i class="fa-solid fa-child-reaching text-indigo-600"></i>
+              <span>Reach-to-Target</span>
+            </h3>
+            <span id="resReachStatus" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded">Not Tested</span>
+          </div>
+          <div class="py-6 text-center">
+            <div id="resReachScore" class="text-4xl font-extrabold text-slate-300">--</div>
+            <p class="text-xs text-slate-500 mt-1">Max Reach Distance (cm)</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-1.5">
+            <div class="flex justify-between text-slate-600">
+              <span>Normalized Reach Ratio:</span>
+              <span id="resReachNorm" class="font-semibold text-slate-800">--</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Shoulder Stability:</span>
+              <span id="resReachStability" class="font-semibold text-slate-800">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elbow Proprioception Result -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+              <i class="fa-solid fa-angle-right text-amber-600"></i>
+              <span>Elbow Proprioception</span>
+            </h3>
+            <span id="resPropStatus" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded">Not Tested</span>
+          </div>
+          <div class="py-6 text-center">
+            <div id="resPropScore" class="text-4xl font-extrabold text-slate-300">--</div>
+            <p class="text-xs text-slate-500 mt-1">Absolute Angle Error</p>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-1.5">
+            <div class="flex justify-between text-slate-600">
+              <span>Target Angle:</span>
+              <span id="resPropTarget" class="font-semibold text-slate-800">--</span>
+            </div>
+            <div class="flex justify-between text-slate-600">
+              <span>Actual Reached Angle:</span>
+              <span id="resPropActual" class="font-semibold text-slate-800">--</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Action Footer -->
+      <div class="flex justify-start">
+        <button onclick="switchTab('dashboard')" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-6 py-3 rounded-xl shadow transition flex items-center space-x-2">
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+          <span>Return to Dashboard</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Audio Feedback Effects (Web Audio API synthetized) -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+    <p>NeuroRehab Metrics Platform &bull; Designed for Upper-Limb Functional Recovery Screening</p>
+  </footer>
+
+  <!-- Application Logic JavaScript -->
+  <script>
+    // Global Application State
+    const state = {
+      activeTab: 'dashboard',
+      activeTest: null, // 'finger-tapping', 'reach-target', 'elbow-proprioception'
+      isRunning: false,
+      timerDuration: 30, // Default duration in seconds
+      timerRemaining: 30,
+      timerInterval: null,
+      
+      // Test Results Store
+      results: {
+        fingerTapping: { tested: false, tapCount: 0, cadence: 0, intervals: [] },
+        reachTarget: { tested: false, maxReachCm: 0, normalizedRatio: 0 },
+        elbowProprioception: { tested: false, targetAngle: 90, actualAngle: 0, absError: 0 }
+      },
+
+      // Finger Tapping Specifics
+      tapping: {
+        isPinched: false,
+        lastTapTime: 0,
+        tapTimes: []
+      },
+
+      // Reach Specifics
+      reach: {
+        baselineShoulderWidth: 0,
+        maxReachDistancePx: 0,
+        maxReachCm: 0,
+        maxNormRatio: 0
+      },
+
+      // Proprioception Specifics
+      proprioception: {
+        targetAngle: 90,
+        currentAngle: 0,
+        stableHoldStartTime: null,
+        holdDuration: 0
+      }
+    };
+
+    // DOM Elements
+    const elements = {
+      webcam: document.getElementById('webcam'),
+      canvas: document.getElementById('outputCanvas'),
+      ctx: document.getElementById('outputCanvas').getContext('2d'),
+      cameraLoading: document.getElementById('cameraLoading'),
+      testBadgeTitle: document.getElementById('testBadgeTitle'),
+      timerDisplay: document.getElementById('timerDisplay'),
+      guidanceText: document.getElementById('guidanceText'),
+      startTestBtn: document.getElementById('startTestBtn'),
+      startTestIcon: document.getElementById('startTestIcon'),
+      startTestLabel: document.getElementById('startTestLabel'),
+      patientIdInput: document.getElementById('patientIdInput'),
+      proprioceptionOptions: document.getElementById('proprioceptionOptions'),
+      
+      // Metric Elements
+      tapMetrics: document.getElementById('tapMetrics'),
+      reachMetrics: document.getElementById('reachMetrics'),
+      proprioMetrics: document.getElementById('proprioMetrics'),
+      
+      // Dynamic Metric Labels
+      tapCounter: document.getElementById('tapCounter'),
+      tapCadence: document.getElementById('tapCadence'),
+      pinchDist: document.getElementById('pinchDist'),
+      maxReachVal: document.getElementById('maxReachVal'),
+      maxReachNorm: document.getElementById('maxReachNorm'),
+      reachProgressBar: document.getElementById('reachProgressBar'),
+      targetAngleDisplay: document.getElementById('targetAngleDisplay'),
+      currentElbowAngleDisplay: document.getElementById('currentElbowAngleDisplay'),
+      angleErrorDisplay: document.getElementById('angleErrorDisplay'),
+      testInstructions: document.getElementById('testInstructions')
+    };
+
+    // MediaPipe Hand & Pose Instances & Camera Pipeline
+    let cameraPipe = null;
+    let mpHands = null;
+    let mpPose = null;
+    let activeModel = null; // 'hands' or 'pose'
+
+    // Simple Web Audio Sound Generator for Cues
+    function playAudioCue(type) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'tap') {
+          osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.08);
+        } else if (type === 'start') {
+          osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.25);
+        } else if (type === 'complete') {
+          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+          osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15); // E5
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        }
+      } catch (e) {
+        // Audio playback error fallback
+      }
+    }
+
+    // Switch Top-Level Views (Dashboard, Assessment, Results)
+    function switchTab(tab) {
+      state.activeTab = tab;
+      document.getElementById('view-dashboard').classList.add('hidden');
+      document.getElementById('view-assessment').classList.add('hidden');
+      document.getElementById('view-results').classList.add('hidden');
+
+      if (tab === 'dashboard') {
+        stopTestExecution();
+        document.getElementById('view-dashboard').classList.remove('hidden');
+      } else if (tab === 'assessment') {
+        document.getElementById('view-assessment').classList.remove('hidden');
+      } else if (tab === 'results') {
+        stopTestExecution();
+        updateResultsSummaryUI();
+        document.getElementById('view-results').classList.remove('hidden');
+      }
+    }
+
+    // Initialize Assessment Configuration
+    function startAssessment(testType) {
+      state.activeTest = testType;
+      state.isRunning = false;
+      
+      // Configure test parameters
+      if (testType === 'finger-tapping') {
+        state.timerDuration = 30;
+        activeModel = 'hands';
+        elements.testBadgeTitle.innerText = "Finger Tapping Test";
+        elements.guidanceText.innerText = "Bring your thumb and index finger together repeatedly.";
+        elements.testInstructions.innerText = "Tap thumb tip (Landmark 4) and index tip (Landmark 8) together as fast as you can for 30 seconds.";
+        
+        elements.tapMetrics.classList.remove('hidden');
+        elements.reachMetrics.classList.add('hidden');
+        elements.proprioMetrics.classList.add('hidden');
+        elements.proprioceptionOptions.classList.add('hidden');
+        
+        // Reset metrics
+        state.results.fingerTapping.tapCount = 0;
+        state.tapping.tapTimes = [];
+        elements.tapCounter.innerText = "0";
+        elements.tapCadence.innerText = "0 taps/min";
+
+      } else if (testType === 'reach-target') {
+        state.timerDuration = 15;
+        activeModel = 'pose';
+        elements.testBadgeTitle.innerText = "Reach-to-Target Test";
+        elements.guidanceText.innerText = "Reach forward as far as possible when recording starts.";
+        elements.testInstructions.innerText = "Extend your hand straight forward from your body to measure maximum upper-limb reach.";
+
+        elements.tapMetrics.classList.add('hidden');
+        elements.reachMetrics.classList.remove('hidden');
+        elements.proprioMetrics.classList.add('hidden');
+        elements.proprioceptionOptions.classList.add('hidden');
+
+        state.reach.maxReachDistancePx = 0;
+        state.reach.maxReachCm = 0;
+        elements.maxReachVal.innerHTML = '0.0 <span class="text-2xl font-bold">cm</span>';
+        elements.reachProgressBar.style.width = '0%';
+
+      } else if (testType === 'elbow-proprioception') {
+        state.timerDuration = 0; // Manual / Auto-hold finish
+        activeModel = 'pose';
+        elements.testBadgeTitle.innerText = "Elbow Proprioception Test";
+        elements.guidanceText.innerText = "Flex/extend elbow to match the target angle, then hold position.";
+        elements.testInstructions.innerText = "Bend your elbow to match the target angle shown on screen. Press 'Confirm Position' or hold still for 3s.";
+
+        elements.tapMetrics.classList.add('hidden');
+        elements.reachMetrics.classList.add('hidden');
+        elements.proprioMetrics.classList.remove('hidden');
+        elements.proprioceptionOptions.classList.remove('hidden');
+
+        setProprioceptionTarget(90);
+      }
+
+      state.timerRemaining = state.timerDuration;
+      updateTimerDisplay();
+      updateStartButtonUI(false);
+      switchTab('assessment');
+      initMediaPipe();
+    }
+
+    // Set Target Angle for Proprioception Test
+    function setProprioceptionTarget(angle) {
+      state.proprioception.targetAngle = angle;
+      elements.targetAngleDisplay.innerText = angle + "°";
+      
+      // Update UI toggle buttons
+      document.querySelectorAll('.prop-angle-btn').forEach(btn => {
+        if (parseInt(btn.getAttribute('data-angle')) === angle) {
+          btn.classList.add('bg-white', 'shadow-sm', 'text-teal-600');
+          btn.classList.remove('text-slate-600');
+        } else {
+          btn.classList.remove('bg-white', 'shadow-sm', 'text-teal-600');
+          btn.classList.add('text-slate-600');
+        }
+      });
+    }
+
+    // Timer Display Update
+    function updateTimerDisplay() {
+      if (state.activeTest === 'elbow-proprioception') {
+        elements.timerDisplay.innerText = "Hold & Hold";
+      } else {
+        elements.timerDisplay.innerText = state.timerRemaining.toFixed(1) + "s";
+      }
+    }
+
+    // Toggle Start/Stop Test Execution
+    function toggleTestExecution() {
+      if (state.isRunning) {
+        stopTestExecution();
+      } else {
+        startTestExecution();
+      }
+    }
+
+    function startTestExecution() {
+      state.isRunning = true;
+      playAudioCue('start');
+      updateStartButtonUI(true);
+
+      if (state.activeTest === 'finger-tapping') {
+        state.results.fingerTapping.tapCount = 0;
+        state.tapping.tapTimes = [];
+        elements.tapCounter.innerText = "0";
+      } else if (state.activeTest === 'reach-target') {
+        state.reach.maxReachDistancePx = 0;
+        state.reach.maxReachCm = 0;
+      } else if (state.activeTest === 'elbow-proprioception') {
+        state.proprioception.stableHoldStartTime = null;
+      }
+
+      if (state.timerDuration > 0) {
+        state.timerRemaining = state.timerDuration;
+        const startTime = Date.now();
+        
+        state.timerInterval = setInterval(() => {
+          const elapsed = (Date.now() - startTime) / 1000;
+          state.timerRemaining = Math.max(0, state.timerDuration - elapsed);
+          updateTimerDisplay();
+
+          if (state.timerRemaining <= 0) {
+            completeTest();
+          }
+        }, 100);
+      }
+    }
+
+    function stopTestExecution() {
+      state.isRunning = false;
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+      updateStartButtonUI(false);
+    }
+
+    function completeTest() {
+      stopTestExecution();
+      playAudioCue('complete');
+
+      // Save Results
+      if (state.activeTest === 'finger-tapping') {
+        state.results.fingerTapping.tested = true;
+        const totalTaps = state.results.fingerTapping.tapCount;
+        state.results.fingerTapping.cadence = Math.round((totalTaps / 30) * 60);
+        elements.guidanceText.innerText = `Test Complete! Taps recorded: ${totalTaps}`;
+
+      } else if (state.activeTest === 'reach-target') {
+        state.results.reachTarget.tested = true;
+        elements.guidanceText.innerText = `Test Complete! Max Reach: ${state.results.reachTarget.maxReachCm} cm`;
+
+      } else if (state.activeTest === 'elbow-proprioception') {
+        state.results.elbowProprioception.tested = true;
+        state.results.elbowProprioception.targetAngle = state.proprioception.targetAngle;
+        state.results.elbowProprioception.actualAngle = state.proprioception.currentAngle;
+        state.results.elbowProprioception.absError = Math.abs(state.proprioception.targetAngle - state.proprioception.currentAngle);
+        elements.guidanceText.innerText = `Test Complete! Angle Error: ${state.results.elbowProprioception.absError.toFixed(1)}°`;
+      }
+
+      setTimeout(() => {
+        switchTab('results');
+      }, 1500);
+    }
+
+    function confirmProprioceptionAngle() {
+      if (state.activeTest === 'elbow-proprioception') {
+        completeTest();
+      }
+    }
+
+    function stopAndReturn() {
+      stopTestExecution();
+      switchTab('dashboard');
+    }
+
+    function updateStartButtonUI(running) {
+      if (running) {
+        elements.startTestBtn.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+        elements.startTestBtn.classList.add('bg-rose-600', 'hover:bg-rose-700', 'recording-pulse');
+        elements.startTestIcon.className = "fa-solid fa-square";
+        elements.startTestLabel.innerText = "Stop Test";
+      } else {
+        elements.startTestBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'recording-pulse');
+        elements.startTestBtn.classList.add('bg-teal-600', 'hover:bg-teal-700');
+        elements.startTestIcon.className = "fa-solid fa-play";
+        elements.startTestLabel.innerText = "Begin Recording";
+      }
+    }
+
+    // MediaPipe Initialization
+    async function initMediaPipe() {
+      elements.cameraLoading.classList.remove('hidden');
+
+      if (!mpHands) {
+        mpHands = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        mpHands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6
+        });
+        mpHands.onResults(onHandResults);
+      }
+
+      if (!mpPose) {
+        mpPose = new Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+        mpPose.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        mpPose.onResults(onPoseResults);
+      }
+
+      if (!cameraPipe) {
+        cameraPipe = new Camera(elements.webcam, {
+          onFrame: async () => {
+            if (activeModel === 'hands') {
+              await mpHands.send({ image: elements.webcam });
+            } else if (activeModel === 'pose') {
+              await mpPose.send({ image: elements.webcam });
+            }
+          },
+          width: 640,
+          height: 480
+        });
+        await cameraPipe.start();
+      }
+
+      elements.cameraLoading.classList.add('hidden');
+    }
+
+    // Hand Tracking Results Processor (Finger Tapping)
+    function onHandResults(results) {
+      const canvasCtx = elements.ctx;
+      const width = elements.canvas.width = elements.webcam.videoWidth || 640;
+      const height = elements.canvas.height = elements.webcam.videoHeight || 480;
+
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, width, height);
+      canvasCtx.drawImage(results.image, 0, 0, width, height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+
+        // Draw hand landmarks
+        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#0d9488', lineWidth: 3 });
+        drawLandmarks(canvasCtx, landmarks, { color: '#2dd4bf', lineWidth: 1, radius: 4 });
+
+        // Thumb Tip (4) & Index Tip (8)
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+
+        const thumbPx = { x: thumbTip.x * width, y: thumbTip.y * height };
+        const indexPx = { x: indexTip.x * width, y: indexTip.y * height };
+
+        // Euclidean Distance
+        const dist = Math.hypot(thumbPx.x - indexPx.x, thumbPx.y - indexPx.y);
+        elements.pinchDist.innerText = `${dist.toFixed(1)} px`;
+
+        // Draw connecting visual line between tips
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(thumbPx.x, thumbPx.y);
+        canvasCtx.lineTo(indexPx.x, indexPx.y);
+        canvasCtx.strokeStyle = dist < 35 ? '#10b981' : '#f43f5e';
+        canvasCtx.lineWidth = 4;
+        canvasCtx.stroke();
+
+        // Tapping Logic State Machine
+        if (state.isRunning && state.activeTest === 'finger-tapping') {
+          const pinchThreshold = 35; // px distance threshold
+          const releaseThreshold = 55;
+
+          if (dist < pinchThreshold && !state.tapping.isPinched) {
+            state.tapping.isPinched = true;
+            state.results.fingerTapping.tapCount += 1;
+            elements.tapCounter.innerText = state.results.fingerTapping.tapCount;
+            
+            // Calculate instantaneous rate
+            const now = Date.now();
+            state.tapping.tapTimes.push(now);
+            if (state.tapping.tapTimes.length > 1) {
+              const elapsedSec = (now - state.tapping.tapTimes[0]) / 1000;
+              const rate = Math.round((state.tapping.tapTimes.length / elapsedSec) * 60);
+              elements.tapCadence.innerText = `${rate} taps/min`;
+            }
+
+            playAudioCue('tap');
+
+          } else if (dist > releaseThreshold && state.tapping.isPinched) {
+            state.tapping.isPinched = false;
+          }
+        }
+      } else {
+        if (state.activeTest === 'finger-tapping') {
+          elements.guidanceText.innerText = "Hand lost. Please hold your hand up in front of the camera.";
+        }
+      }
+      canvasCtx.restore();
+    }
+
+    // Pose Tracking Results Processor (Reach & Proprioception)
+    function onPoseResults(results) {
+      const canvasCtx = elements.ctx;
+      const width = elements.canvas.width = elements.webcam.videoWidth || 640;
+      const height = elements.canvas.height = elements.webcam.videoHeight || 480;
+
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, width, height);
+      canvasCtx.drawImage(results.image, 0, 0, width, height);
+
+      if (results.poseLandmarks) {
+        const lm = results.poseLandmarks;
+
+        // Draw upper body skeleton
+        drawConnectors(canvasCtx, lm, POSE_CONNECTIONS, { color: '#6366f1', lineWidth: 2 });
+        drawLandmarks(canvasCtx, lm, { color: '#818cf8', lineWidth: 1, radius: 4 });
+
+        // Determine dominant arm (prefer right, fallback to left)
+        const leftShoulder = lm[11], rightShoulder = lm[12];
+        const leftElbow = lm[13], rightElbow = lm[14];
+        const leftWrist = lm[15], rightWrist = lm[16];
+
+        // Choose arm based on visibility
+        const isRightArmVisible = rightWrist.visibility > 0.5;
+        const shoulder = isRightArmVisible ? rightShoulder : leftShoulder;
+        const elbow = isRightArmVisible ? rightElbow : leftElbow;
+        const wrist = isRightArmVisible ? rightWrist : leftWrist;
+
+        // Pixel coordinates
+        const sPx = { x: shoulder.x * width, y: shoulder.y * height };
+        const ePx = { x: elbow.x * width, y: elbow.y * height };
+        const wPx = { x: wrist.x * width, y: wrist.y * height };
+
+        // TEST 2: REACH-TO-TARGET PROCESSING
+        if (state.activeTest === 'reach-target') {
+          // Calculate baseline shoulder width for normalization
+          const shoulderDistPx = Math.hypot(
+            (rightShoulder.x - leftShoulder.x) * width,
+            (rightShoulder.y - leftShoulder.y) * height
+          );
+
+          // Horizontal reach distance from shoulder origin to wrist
+          const reachPx = Math.hypot(wPx.x - sPx.x, wPx.y - sPx.y);
+          
+          // Estimate centimeters (average shoulder width ~ 38cm baseline)
+          const estimatedCm = shoulderDistPx > 0 ? (reachPx / shoulderDistPx) * 38 : 0;
+          const normRatio = shoulderDistPx > 0 ? (reachPx / shoulderDistPx) : 0;
+
+          if (state.isRunning) {
+            if (reachPx > state.reach.maxReachDistancePx) {
+              state.reach.maxReachDistancePx = reachPx;
+              state.reach.maxReachCm = Math.round(estimatedCm * 10) / 10;
+              state.reach.maxNormRatio = Math.round(normRatio * 100);
+
+              state.results.reachTarget.maxReachCm = state.reach.maxReachCm;
+              state.results.reachTarget.normalizedRatio = state.reach.maxNormRatio;
+            }
+          }
+
+          // Visual reach line rendering
+          canvasCtx.beginPath();
+          canvasCtx.moveTo(sPx.x, sPx.y);
+          canvasCtx.lineTo(wPx.x, wPx.y);
+          canvasCtx.strokeStyle = '#6366f1';
+          canvasCtx.lineWidth = 4;
+          canvasCtx.stroke();
+
+          // Render live reach output
+          elements.maxReachVal.innerHTML = `${state.reach.maxReachCm} <span class="text-2xl font-bold">cm</span>`;
+          elements.maxReachNorm.innerText = `Normalized Reach: ${state.reach.maxNormRatio}% shoulder ratio`;
+          
+          const maxCapacityPct = Math.min(100, Math.round((reachPx / (shoulderDistPx * 1.8)) * 100));
+          elements.reachProgressBar.style.width = `${maxCapacityPct}%`;
+        }
+
+        // TEST 3: ELBOW PROPRIOCEPTION PROCESSING
+        if (state.activeTest === 'elbow-proprioception') {
+          // Calculate 2D joint angle at elbow (shoulder-elbow-wrist)
+          const angleRad = Math.atan2(wPx.y - ePx.y, wPx.x - ePx.x) - Math.atan2(sPx.y - ePx.y, sPx.x - ePx.x);
+          let angleDeg = Math.abs((angleRad * 180.0) / Math.PI);
+          if (angleDeg > 180.0) angleDeg = 360.0 - angleDeg;
+
+          const roundedAngle = Math.round(angleDeg);
+          state.proprioception.currentAngle = roundedAngle;
+
+          elements.currentElbowAngleDisplay.innerText = `${roundedAngle}°`;
+
+          const absErr = Math.abs(state.proprioception.targetAngle - roundedAngle);
+          elements.angleErrorDisplay.innerText = `${absErr.toFixed(1)}°`;
+
+          // Draw Angle Arc Overlay
+          canvasCtx.beginPath();
+          canvasCtx.arc(ePx.x, ePx.y, 40, 0, 2 * Math.PI);
+          canvasCtx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+          canvasCtx.fill();
+          canvasCtx.strokeStyle = '#f59e0b';
+          canvasCtx.lineWidth = 3;
+          canvasCtx.stroke();
+
+          // Text overlay on elbow joint
+          canvasCtx.fillStyle = '#ffffff';
+          canvasCtx.font = 'bold 16px Inter, sans-serif';
+          canvasCtx.fillText(`${roundedAngle}°`, ePx.x + 15, ePx.y - 15);
+
+          // Auto-capture logic if user holds steady within ±5° for 3 seconds
+          if (state.isRunning) {
+            if (absErr <= 5) {
+              if (!state.proprioception.stableHoldStartTime) {
+                state.proprioception.stableHoldStartTime = Date.now();
+              } else {
+                const holdElapsed = (Date.now() - state.proprioception.stableHoldStartTime) / 1000;
+                elements.guidanceText.innerText = `Holding Target Position! Keep steady... (${holdElapsed.toFixed(1)}s / 3s)`;
+                if (holdElapsed >= 3) {
+                  completeTest();
+                }
+              }
+            } else {
+              state.proprioception.stableHoldStartTime = null;
+              elements.guidanceText.innerText = `Adjust elbow to match target ${state.proprioception.targetAngle}° angle.`;
+            }
+          }
+        }
+
+      } else {
+        if (state.activeTest === 'reach-target' || state.activeTest === 'elbow-proprioception') {
+          elements.guidanceText.innerText = "Body position lost. Step back so upper body and arms are fully visible.";
+        }
+      }
+
+      canvasCtx.restore();
+    }
+
+    // Update Results Summary View
+    function updateResultsSummaryUI() {
+      // Finger Tapping
+      const ft = state.results.fingerTapping;
+      if (ft.tested) {
+        document.getElementById('resTapStatus').innerText = "Completed";
+        document.getElementById('resTapStatus').className = "text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded";
+        document.getElementById('resTapScore').innerText = ft.tapCount;
+        document.getElementById('resTapScore').className = "text-4xl font-extrabold text-teal-600";
+        document.getElementById('resTapRate').innerText = `${ft.cadence} taps/min`;
+        document.getElementById('resTapRhythm').innerText = ft.cadence > 40 ? "Normal" : "Impaired";
+      }
+
+      // Reach-to-Target
+      const rt = state.results.reachTarget;
+      if (rt.tested) {
+        document.getElementById('resReachStatus').innerText = "Completed";
+        document.getElementById('resReachStatus').className = "text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded";
+        document.getElementById('resReachScore').innerText = `${rt.maxReachCm} cm`;
+        document.getElementById('resReachScore').className = "text-4xl font-extrabold text-indigo-600";
+        document.getElementById('resReachNorm').innerText = `${rt.normalizedRatio}% shoulder width`;
+        document.getElementById('resReachStability').innerText = rt.normalizedRatio > 100 ? "Functional Range" : "Reduced Range";
+      }
+
+      // Proprioception
+      const ep = state.results.elbowProprioception;
+      if (ep.tested) {
+        document.getElementById('resPropStatus').innerText = "Completed";
+        document.getElementById('resPropStatus').className = "text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded";
+        document.getElementById('resPropScore').innerText = `${ep.absError.toFixed(1)}°`;
+        document.getElementById('resPropScore').className = "text-4xl font-extrabold text-amber-600";
+        document.getElementById('resPropTarget').innerText = `${ep.targetAngle}°`;
+        document.getElementById('resPropActual').innerText = `${ep.actualAngle}°`;
+      }
+    }
+
+    // Export Session Results as CSV
+    function exportToCSV() {
+      const patientId = elements.patientIdInput.value.trim() || 'Anonymous';
+      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+      const rows = [
+        ["Patient ID", "Timestamp", "Test Name", "Primary Score Metric", "Detailed Metric", "Assessment Result Status"],
+        [
+          patientId,
+          timestamp,
+          "Finger Tapping (30s)",
+          `${state.results.fingerTapping.tapCount} taps`,
+          `Cadence: ${state.results.fingerTapping.cadence} taps/min`,
+          state.results.fingerTapping.tested ? "COMPLETED" : "NOT_TESTED"
+        ],
+        [
+          patientId,
+          timestamp,
+          "Reach-to-Target (15s)",
+          `${state.results.reachTarget.maxReachCm} cm`,
+          `Normalized Ratio: ${state.results.reachTarget.normalizedRatio}%`,
+          state.results.reachTarget.tested ? "COMPLETED" : "NOT_TESTED"
+        ],
+        [
+          patientId,
+          timestamp,
+          "Elbow Proprioception",
+          `Error: ${state.results.elbowProprioception.absError.toFixed(1)} deg`,
+          `Target: ${state.results.elbowProprioception.targetAngle} deg | Actual: ${state.results.elbowProprioception.actualAngle} deg`,
+          state.results.elbowProprioception.tested ? "COMPLETED" : "NOT_TESTED"
+        ]
+      ];
+
+      const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Stroke_Assessment_${patientId}_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
